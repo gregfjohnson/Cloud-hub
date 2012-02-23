@@ -1,0 +1,129 @@
+#!/bin/sh
+# change_wifi_parms - change local wifi parms in as part of a cloud-wide update
+#
+# Copyright (C) 2012, Greg Johnson
+# Released under the terms of the GNU GPL v2.0.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# $Id: change_wifi_parms,v 1.11 2012-02-22 18:55:24 greg Exp $
+
+# this script updates the wifi parameters stored in non-volatile ram
+# and reboots the router.  it is used in all boxes in the cloud when
+# a user with proper authorization requests propagation of new wifi
+# parms throughout the cloud.
+
+ssid=""
+channel=""
+netmode=""
+wep=""
+securitymode2=""
+wepkey=""
+wepbits=""
+
+debug=""
+
+echo change_wifi_parms $* > /tmp/change_wifi_parms.db
+
+while [ -n "$1" ]; do
+    echo arg ">>$1<<"
+    case "$1" in
+    -s) ssid=$2;                                                       shift ;;
+    -c) channel=$2;                                                    shift ;;
+    -m) netmode=$2;                                                    shift ;;
+    -w) wep=$2;                                                        shift ;;
+    -k) wepkey=$2;                                                     shift ;;
+    -b) wepbits=$2;                                                    shift ;;
+    -d) debug=true;                                                          ;;
+    -*) echo oops $1 spoo; exit 1                                            ;;
+    *) shift                                                                 ;;
+    esac
+    shift
+done
+
+if [ -n "$ssid" ]; then
+    echo set wl_ssid=$ssid >> /tmp/change_wifi_parms.db
+    if [ -z "$debug" ]; then
+        echo doing it >> /tmp/change_wifi_parms.db
+        nvram set wl_ssid=$ssid
+        nvram commit
+    fi
+fi
+
+if [ -n "$channel" ]; then
+    echo set wl_channel=$channel >> /tmp/change_wifi_parms.db
+    if [ -z "$debug" ]; then
+        echo doing it >> /tmp/change_wifi_parms.db
+        nvram set wl_channel=$channel
+        nvram commit
+    fi
+fi
+
+if [ -n "$netmode" ]; then
+    echo set wl_net_mode=$netmode >> /tmp/change_wifi_parms.db
+    if [ -z "$debug" ]; then
+        echo doing it >> /tmp/change_wifi_parms.db
+        nvram set wl_net_mode=$netmode
+        nvram commit
+    fi
+fi
+
+if [ -n "$wep" ]; then
+    echo set wl_wep=$wep >> /tmp/change_wifi_parms.db
+    if [ -z "$debug" ]; then
+        echo doing it >> /tmp/change_wifi_parms.db
+        nvram set wl_wep=$wep
+        nvram commit
+    fi
+
+    if [ "$wep" = "disabled" ]; then
+        echo set security_mode2=disabled >> /tmp/change_wifi_parms.db
+        if [ -z "$debug" ]; then
+            echo doing it >> /tmp/change_wifi_parms.db
+            nvram set security_mode2=disabled
+            nvram commit
+        fi
+    else
+        echo set security_mode2=wep >> /tmp/change_wifi_parms.db
+        if [ -z "$debug" ]; then
+            echo doing it >> /tmp/change_wifi_parms.db
+            nvram set security_mode2=wep
+            nvram commit
+        fi
+    fi
+fi
+
+if [ -n "$wepkey" ]; then
+    echo set wl_key1=$wepkey >> /tmp/change_wifi_parms.db
+    if [ -z "$debug" ]; then
+        echo doing it >> /tmp/change_wifi_parms.db
+        nvram set wl_key1=$wepkey
+        nvram commit
+    fi
+
+    echo set wl_wep_buf=":$wepkey::::1" >> /tmp/change_wifi_parms.db
+    if [ -z "$debug" ]; then
+        echo doing it >> /tmp/change_wifi_parms.db
+        nvram set wl_wep_buf=":$wepkey::::1"
+        nvram commit
+    fi
+fi
+
+if [ -n "$wepbits" ]; then
+    echo set wl_wep_bit=$wepbits >> /tmp/change_wifi_parms.db
+    if [ -z "$debug" ]; then
+        echo doing it >> /tmp/change_wifi_parms.db
+        nvram set wl_wep_bit=$wepbits
+        nvram commit
+    fi
+fi
+
+# do the router reboot
+
+if [ -z "$debug" ]; then
+    echo do the kill -HUP 1 >> /tmp/change_wifi_parms.db
+    kill -HUP 1
+fi

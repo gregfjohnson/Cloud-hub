@@ -1,0 +1,25 @@
+#!/bin/sh
+# cfg_cloud - configure and start cloud hub at system boot time
+#
+# Copyright (C) 2012, Greg Johnson
+# Released under the terms of the GNU GPL v2.0.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# $Id: cfg_cloud,v 1.3 2012-02-22 18:55:24 greg Exp $
+
+# small startup script called from src/router/rc/services.c to start
+# the user-space cloud programs.
+
+# read values from non-volatile ram, and create a start-up shell script
+# that configures command-line arguments based on those values
+
+/usr/sbin/nv_ifconfig > /tmp/do_ifconfig
+chmod +x /tmp/do_ifconfig
+
+# start everything up..
+
+/tmp/do_ifconfig > /tmp/do_ifconfig.res 2>&1

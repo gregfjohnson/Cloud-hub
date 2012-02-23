@@ -1,0 +1,25 @@
+#!/bin/sh
+# Copyright (C) 2012, Greg Johnson
+# $Id: uncfg_cloud,v 1.2 2012-02-22 18:55:25 greg Exp $
+#
+# reset the interfaces so that they look like the default firmware setup
+# with bridges etc.
+#
+
+lan=$1
+wireless=$2
+# ip_addr=$3
+
+echo $lan
+echo $wireless
+
+/sbin/ifconfig $lan up 0.0.0.0
+/sbin/ifconfig $wireless up 0.0.0.0
+
+/usr/sbin/brctl addbr br0
+/usr/sbin/brctl stp br0 no
+
+/usr/sbin/brctl addif br0 $lan
+/usr/sbin/brctl addif br0 $wireless
+
+/sbin/ifconfig br0 $3

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Copyright (C) 2012, Greg Johnson
+# $Id: do_scan,v 1.3 2012-02-22 18:55:24 greg Exp $
+#
+# This script loops forever, and about once every minute it does a
+# scan of the local wifi environment.  it creates a pipe-delimited file
+# "/tmp/local_scan" containing SSID, mode, channel, and signal quality
+# for each detected wifi transmitter nearby.
+
+while true; do
+    wl scan
+    sleep 5
+    wl scanresults > /tmp/do_scan.$$
+    /usr/sbin/scan < /tmp/do_scan.$$ > /tmp/local_scan.$$
+    mv -f /tmp/local_scan.$$ /tmp/local_scan
+    sleep 60
+done

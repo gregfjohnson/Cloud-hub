@@ -1,0 +1,86 @@
+Cloud Hub:  Yet another implementation of wireless mesh networks
+
+Introduction
+
+This is an implementation of wireless mesh networks.  It is intended
+to be a firmware upgrade for inexpensive wireless routers such as the
+Linksys WRT54G.  The idea is to make it easy to build up wireless coverage
+throughout large homes, office buildings, and multiple-building campuses
+by setting up inexpensive routers that will configure themselves into
+optimal wireless meshes.  Clients can then gain access to the internet
+either by attaching cat-5 cable to one of the boxes, or by joining
+the mesh as an "ad-hoc leaf node" which requires no special software
+or drivers.
+
+Here is a summary of the key features of this implementation:
+
+It is a link-level implementation, meant to be thought of as a single
+large "ethernet hub".
+
+From the user's perspective, a hub is a simple device:  plug it in,
+and then attach cat-5 cables to it.
+
+The goal of the cloud hub project is to make a wireless mesh close to
+this level of simplicity.
+
+Get a new wireless box, install the cloud hub firmware, plug it in, and
+it finds your other cloud hub boxes by itself.  Connect your computer to
+it with a cat-5 cable, or set your computer's wifi card to ad-hoc mode,
+and you're done.  (Well, almost.  If you want, you can access a simple
+internal configuration web page and set wifi parameters such as SSID
+and WEP to your preferences.)
+
+Configuration, to the extent that it is necessary, is uncluttered
+and simple.
+
+The wireless routers continuously sense wireless signal strength.
+They update their connectivity among themselves automatically to optimize
+overall signal quality.
+
+In addition to wireless connections, the cloud hub boxes sense each
+other via cat-5 connections.  So, if you have more than one cloud hub
+box that happens to be attached to your LAN, those boxes will find each
+other that way and integrate with each other via the cat-5 connection.
+
+The cloud hub software uses wifi ad-hoc mode.  It permits standard
+unmodified ad-hoc devices to integrate into the mesh as leaf nodes.
+In other words, you can use a wifi-equipped laptop computer or beige box
+with a wifi card in it.  After configuring such a device into ad-hoc
+mode, it will be integrated into the wireless mesh and gain access to
+the network.
+
+Ad hoc clients can roam throughout the mesh, and are dynamically handed
+off to the nearest, best-signal cloud box.
+
+The cloud boxes create a spanning tree of connections among themselves,
+but make an effort to communicate parsimoniously to reduce wireless
+traffic.  Additional non-local arcs are added to the graph in those cases
+where signal quality permits it.  Each node has the responsibility to make
+sure that its spanning-tree neighbors have messages propagated to them,
+but if a node can construct a proof that its neighbor has the message
+(having overheard it from some other box in the cloud), it will refrain
+from redundantly transmitting it.
+
+The internal web server has a display that shows a continuously updated
+picture of the topology of the entire cloud.
+
+The web server has a display of the wireless environment of the entire
+cloud.  Each node monitors its immediate environment for other wifi
+access points and activity.  About once per minute it transmits this
+information throughout the cloud.  So, every cloud box can show the user
+all of the wifi activity seen by every node throughout the cloud.
+
+From the internal configuration web server of a single cloud box, it is
+possible to update the wifi parameters of all of the boxes in the cloud.
+(As a security check, this will only work for boxes that share the same
+administrator password and current wifi parameters.)
+
+Security is currently 64-bit or 128-bit WEP.
+
+The lights on the front of the WRT54G blink so as to provide a handy
+picture of mesh status.  They blink out the number of boxes currently
+in the cloud, and how many boxes can be seen directly from each node.
+
+In sum, the cloud hub project embodies few novel ideas for mesh networking
+combined with attention to detail to create reliable, easy-to-deploy
+wireless infrastructure.

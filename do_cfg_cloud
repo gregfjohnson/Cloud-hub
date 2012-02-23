@@ -1,0 +1,211 @@
+#!/bin/sh
+# Copyright (C) 2012, Greg Johnson
+# $Id: do_cfg_cloud,v 1.14 2012-02-22 18:55:24 greg Exp $
+#
+# this script is called from src/router/rc/services.c to start the
+# cloud software.  the command-line options are set up based on nvram
+# values.
+
+touch /tmp/do_cfg_cloud.res
+
+lan=vlan0
+wireless=eth1
+wlan=vlan1
+wirelessmon=prism0
+version=2
+sigstrength="-y"
+adhoc=-A
+debugaccess=""
+
+while [ -n "$1" ]; do
+    case "$1" in
+    -e) lan=$2;                                                        shift ;;
+    -w) wireless=$2;                                                   shift ;;
+    -i) wlan=$2;                                                       shift ;;
+    -m) wirelessmon=$2;                                                shift ;;
+    -v) version=$2;                                                    shift ;;
+    -r) rate=$2;                                                       shift ;;
+    -s) sigstrength=""                                                       ;;
+    -d) debugaccess="-l"                                                     ;;
+    -W) adhoc=""                                                             ;;
+    -*) echo invalid option "\"$1\"" >> /tmp/do_cfg_cloud.res                ;;
+    *) break                                                                 ;;
+    esac
+    shift
+done
+
+/usr/sbin/wl monitor 1
+if [ -n "$rate" ]; then
+    /usr/sbin/wl mrate $rate
+    /usr/sbin/wl rate $rate
+fi
+
+# don't do dhcpd when the box is being a cloud hub.
+killall dnsmasq
+
+# start the link-level server program that provides a shell and file
+# transfer services.  it listens to the internet port on the cloud box.
+
+if [ -n "$debugaccess" ]; then
+    echo "doing /usr/sbin/ll_shell_ftp -e $wlan -s" >> /tmp/do_cfg_cloud.res
+
+    /usr/sbin/ll_shell_ftp -e $wlan -s 2>&1 \
+        | /usr/sbin/label -t /tmp/ll_shell_ftp.log &
+fi
+
+ps >> /tmp/do_cfg_cloud.res
+
+# every minute, scan for nearby wifi networks, put result in /tmp/local_scan
+/usr/sbin/do_scan > /dev/null 2>&1 &
+
+if [ "$adhoc" = "-A" ]; then
+
+    # set ap mode off, and make sure it's off
+    ok=false
+    while [ "$ok" = "false" ]; do
+        /usr/sbin/wl ap 0
+        sleep 1
+        wl ap > /tmp/xxx.$$
+        if grep 'off' /tmp/xxx.$$ > /dev/null; then
+            ok=true
+        fi
+        /bin/rm /tmp/xxx.$$
+    done
+
+    if [ "`nvram get wl_wep`" = "enabled" ]; then
+        dowep=true
+
+        wepkey="key `nvram get wl_key1`"
+
+        echo "dowep - wepkey $wepkey" >> /tmp/do_cfg_cloud.res
+
+        # do something like "wl addwep 0 1122334455\nwl primary_key 0"?
+    else
+        dowep=false
+        wepkey=""
+
+        echo "no dowep - wepkey $wepkey" >> /tmp/do_cfg_cloud.res
+    fi
+    ssid="`nvram get wl_ssid`"
+    echo ssid $ssid >> /tmp/do_cfg_cloud.res
+
+    # go into ad-hoc mode, and make sure we got into ad-hoc mode
+    ok=1
+    while [ $ok -lt 10 ]; do
+        # wl join linksys key 11223344556677889900aabbcc imode ibss amode open
+        echo doing wl join $ssid $wepkey imode ibss amode open \
+            >> /tmp/do_cfg_cloud.res
+
+        # this stuff forces us to come up on our own configured channel,
+        # rather than going to a different channel that is doing ad-hoc
+        # communication on our ESSID.
+        wl radio off
+        wl scansuppress 1
+        wl radio on
+        wl join $ssid $wepkey imode ibss amode open
+        wl scansuppress 0
+
+        sleep 1
+        wl status > /tmp/xxx.$$
+        if grep 'Mode: Ad Hoc' /tmp/xxx.$$ > /dev/null; then
+            ok=20
+            break
+        fi
+        /bin/rm /tmp/xxx.$$
+
+        ok=`expr $ok + 1`
+    done
+
+    if [ $ok -eq 10 ]; then
+
+        # this is sheer hackery.  the box can't get its wireless interface
+        # to come up, possibly because it doesn't have the right WEP
+        # key for an ad-hoc network that is already running on its SSID.
+        # we desperately need to make sure that the user can at least gain
+        # access to the internal web page via the maintenace ethernet port,
+        # so (s)he has a chance to re-configure the settings of the box.
+        # don't know how to do this for now, other than to let the wireless
+        # interface come up.
+
+        echo wl join failed.  trying a temporary fake ssid. \
+            >> /tmp/do_cfg_cloud.res
+
+#        fake=1
+#        while true; do
+#            ssid=fake_$fake
+#            echo doing wl join $ssid $wepkey imode ibss amode open \
+#                >> /tmp/do_cfg_cloud.res
+#            wl join $ssid $wepkey imode ibss amode open
+#            sleep 1
+#            wl status > /tmp/xxx.$$
+#            if grep 'Mode: Ad Hoc' /tmp/xxx.$$ > /dev/null; then
+#                break
+#            fi
+#            /bin/rm /tmp/xxx.$$
+#
+#            fake=`expr $fake + 1`
+#        done
+        /sbin/ifconfig eth1 up
+
+        # now, presumably eth1 is up.  weirdly, it is now ok to turn off
+        # the radio, to prevent access to the cloud using the fake
+        # emergency ssid.  this seems fragile, and might be fixed in
+        # future releases of wl from Linksys.  to check if this is still
+        # working, give two boxes the same ssid, give one a WEP key and
+        # disable WEP on the other.  turn on the on with WEP, wait for it
+        # to come up, and then turn on the other one and access its web page.
+
+        wl radio off
+    fi
+
+else
+    # wds mode.  this is basically a deprecated mode.
+    /usr/sbin/wl ap 1
+fi
+
+# after setting monitoring on, may need to wait briefly to make sure
+# prism0 device comes up.  (this is the raw device that we use to
+# listen for beacons from other boxes, to find their mac address and
+# the signal strength from them to us.)
+sleep 1
+
+touch /tmp/sig_strength
+touch /tmp/beacons
+touch /tmp/wds
+
+if [ "$adhoc" = "-A" ]; then
+    # this is where merge_cloud writes signal strengths in ad-hoc mode.
+    wdsfile=/tmp/sig_strength
+else
+    # utility that creates interfaces to talk to other boxes if we are
+    # in (deprecated) wds mode.
+    /usr/sbin/update_wrt_wds 2>&1 | $label -t /tmp/update_wrt_wds.log &
+    wdsfile=/tmp/wds
+fi
+
+# start the main program to do mesh networking with other boxes.
+
+echo
+echo doing /usr/sbin/merge_cloud -n -e $lan -w $wireless -m $wirelessmon \
+    -a /tmp/sig_strength \
+    -b /tmp/eth_beacons \
+    -d /tmp/beacons \
+    $debugaccess -f $sigstrength $adhoc \
+    -p $wdsfile >> /tmp/do_cfg_cloud.res
+
+/usr/sbin/merge_cloud -n -e $lan -w $wireless -m $wirelessmon \
+    -a /tmp/sig_strength \
+    -b /tmp/eth_beacons \
+    -d /tmp/beacons \
+    $debugaccess -f $sigstrength $adhoc  \
+    -p $wdsfile \
+    2>&1 | /usr/sbin/label -t /tmp/cloud.log &
+
+# start the program that causes the lights on the box to blink, indicating
+# mesh network status.
+
+echo
+echo doing /usr/sbin/status_lights -v $version >> /tmp/do_cfg_cloud.res
+
+/usr/sbin/status_lights -v $version 2>&1 \
+    | /usr/sbin/label -t /tmp/status_lights.log &

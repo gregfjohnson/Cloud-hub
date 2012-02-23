@@ -1,0 +1,525 @@
+<!-- README.html - home page of cloud hub project
+
+     Copyright (C) 2012, Greg Johnson
+     Released under the terms of the GNU GPL v2.0.
+  
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+  
+     $Id: README.html,v 1.16 2012-02-22 18:55:24 greg Exp $
+-->
+<html>
+<body>
+
+<h2>
+Cloud Hub:  Yet another implementation of wireless mesh networks
+</h2>
+
+<p>
+<a href="#intro"> Introduction </a>
+<br>
+
+<a href="#install"> Installing the firmware binary and getting started </a>
+<br>
+
+&nbsp; &nbsp; &nbsp; 
+<a href="#upgrade"> The firmware upgrade process </a>
+<br>
+
+&nbsp; &nbsp; &nbsp;
+<a href="#setup"> Initial setup after the firmware upgrade </a>
+<br>
+
+<a href="#build"> Building the firmware binary from source code </a>
+<br>
+
+<a href="#acknowledgments"> Acknowledgments </a>
+
+
+<a name="intro">
+<h3>
+Introduction
+</h3>
+</a>
+
+<p>
+This is an implementation of wireless mesh networks.  It is intended
+to be a firmware upgrade for inexpensive wireless routers such as the
+Linksys WRT54G.  The idea is to make it easy to build up wireless coverage
+throughout large homes, office buildings, and multiple-building campuses
+by setting up inexpensive routers that will configure themselves into
+optimal wireless meshes.  Clients can then gain access to the internet
+either by attaching cat-5 cable to one of the boxes, or by joining
+the mesh as an "ad-hoc leaf node" which requires no special software
+or drivers.
+
+<p>
+Cloud hub is a link-level implementation, meant to be thought of as a single
+large "ethernet hub".
+
+<p>
+From the user's perspective, a hub is a simple device:  plug it in,
+and then attach cat-5 cables to it.
+
+<p>
+The goal of the cloud hub project is to make a wireless mesh close to
+this level of simplicity:
+
+<p>
+Get a new wireless box, install the cloud hub firmware, plug it in, and
+it finds your other cloud hub boxes by itself.  Connect your computer to
+it with a cat-5 cable, or set your computer's wifi card to ad-hoc mode,
+and you're done.  (Well, almost.  If you want, you can access a simple
+internal configuration web page and set wifi parameters such as SSID
+and WEP to your preferences.)
+
+<p>
+Configuration, to the extent that it is necessary, is uncluttered
+and simple.
+
+<p>
+This project represents an experiment in system design philosophy: Do just
+one task, and do it in a simple, clean, understandable, and reliable way.
+Have different boxes do different things.  This firmware provides a
+simple, clean and minimal configuration web interface.  A collection
+of routers with this firmware collectively implement a single collision
+domain.  The individual cloud boxes do not have IP addresses.  In cloud
+mode, the boxes do not provide DHCPD service; have another box do that.
+No firewalls; have another box do that.  No NAT; have another box do that.
+(Maybe have a single non-cloud server box, or even your DSL/cable modem,
+do all of these things.)  Cloud hub provides a single conceptually simple
+service: a collision domain implemented wirelessly over an extended area.
+
+<p>
+Use Cat-5 cable to connect one of your cloud boxes to a DSL or cable
+modem, or a LAN that is connected to the internet.
+
+<p>
+The wireless routers continuously sense wireless signal strength.
+They update their connectivity among themselves automatically to optimize
+overall signal quality.
+
+<p>
+In addition to wireless connections, the cloud hub boxes sense each
+other via cat-5 connections.  So, if you have more than one cloud hub
+box that happens to be attached to your LAN, those boxes will find each
+other that way and integrate with each other via the cat-5 connection.
+
+<p>
+The cloud hub software uses wifi ad-hoc mode.  It permits standard
+unmodified ad-hoc devices to integrate into the mesh as leaf nodes.
+In other words, you can use a wifi-equipped laptop computer or beige box
+with a wifi card in it.  After configuring such a device into ad-hoc
+mode, it will be integrated into the wireless mesh and gain access to
+the network.
+
+<p>
+Ad hoc clients can roam throughout the mesh, and are dynamically handed
+off to the nearest, best-signal cloud box.
+
+<p>
+The cloud boxes create a spanning tree of connections among themselves,
+but make an effort to communicate parsimoniously to reduce wireless
+traffic.  Additional non-local arcs are added to the graph in those cases
+where signal quality permits it.  Each node has the responsibility to make
+sure that its spanning-tree neighbors have messages propagated to them,
+but if a node can construct a proof that its neighbor has the message
+(having overheard it from some other box in the cloud), it will refrain
+from redundantly transmitting it.
+
+<p>
+The internal web server has a display that shows a continuously updated
+picture of the topology of the entire cloud.
+
+<p>
+The web server has a display of the wireless environment of the entire
+cloud.  Each node monitors its immediate environment for other wifi
+access points and activity.  About once per minute it transmits this
+information throughout the cloud.  So, every cloud box can show the user
+all of the wifi activity seen by every node throughout the cloud.
+
+<p>
+From the internal configuration web server of a single cloud box, it is
+possible to update the wifi parameters of all of the boxes in the cloud.
+(As a security check, this will only work for boxes that share the same
+administrator password and current wifi parameters.)
+
+<p>
+Security is currently 64-bit or 128-bit WEP.
+
+<p>
+The indicator lights on the front of the WRT54G blink so as to provide
+a handy picture of mesh status.  The lights on the front of a particular
+WRT54G blink out the number of boxes in the cloud of which it is a member,
+and how many of those boxes it can sense directly with adequate signal
+strength.
+
+<p>
+In sum, the cloud hub project embodies few novel ideas for mesh networking
+combined with attention to detail to create reliable, easy-to-deploy
+wireless infrastructure.
+
+<a name="install">
+<h3>
+Installing the firmware binary and getting started
+</h3>
+</a>
+
+The firmware has been tested on the following versions of the Linksys
+WRT54G.  It has not been tested on WRT54GS boxes, or routers from other
+manufacturers.
+
+<p>
+<table frame=box rules=all>
+    <tr>
+        <td>&nbsp; Version &nbsp;</td>
+        <td>&nbsp; Serial Number prefix &nbsp;</td>
+    </tr>
+
+    <tr>
+        <td>&nbsp; WRT54G 1.1 &nbsp;</td>
+        <td>&nbsp; CDF3 &nbsp;</td>
+    </tr>
+
+    <tr>
+        <td>&nbsp; WRT54G 3.0 &nbsp;</td>
+        <td>&nbsp; CDF8 &nbsp;</td>
+    </tr>
+
+    <tr>
+        <td>&nbsp; WRT54G 4.0 &nbsp;</td>
+        <td>&nbsp; CDFA &nbsp;</td>
+    </tr>
+
+    <tr>
+        <td>&nbsp; WRT54GL 1.0 &nbsp;</td>
+        <td>&nbsp; CL7A &nbsp;</td>
+    </tr>
+
+</table>
+
+<p>
+NOTE:  This is experimental firmware.  The process of upgrading firmware
+on the WRT54G is a bit sensitive.  It is possible to physically ruin a
+WRT54G during a botched attempt to install new firmware.  Please understand
+that you are assuming $70 worth of risk!  If you proceed despite this
+warning, and fry your box, you have been warned.
+
+<p>
+With a lot of effort, it is usually possible to recover a WRT54G after a
+botched firmware install, but it is a painful process.  Having said all
+that, I have botched firmware installs several times, and have always
+(fortunately) been able to recover the box.  The only time I completely
+fried a WRT54G was when I accidentally plugged my laptop's power connector
+into it.  (Identical, physically compatible plugs, but different voltages.
+Go figure.)
+
+<a name="upgrade">
+<h4>
+The firmware upgrade process
+</h4>
+</a>
+
+<p>
+First, download the latest cloud hub firmware:
+
+<ul>
+    <li>
+    Browse to http://www.sourceforge.net/projects/cloudhub
+
+    <li>
+    Hit the big green "Download Cloud Hub" button
+
+    <li>
+    Select "Release" cloud_hub_0.1.40
+
+    <li>
+    Select "cloud_hub_0.1.40.bin"
+
+    <li>
+    Save "cloud_hub_0.1.40.bin" to a convenient location on your computer
+</ul>
+
+<p>
+Access the internal web page inside the router.  By default, the router
+is at IP address 192.168.1.1, netmask 255.255.255.0.  So, you may have
+to temporarily modify you PC's IP address so that it is in the 192.168.1
+range, for example 192.168.10.
+
+<p>
+Make sure that you have a Cat-5 cable connected between your PC and one
+of the four contiguous Cat-5 connections on the back of the WRT54G.
+
+<p>
+From your browser, go to "192.168.1.1".  You may be asked for a password.
+If so, you can leave "User Name" blank, and type in the default password
+"admin".
+
+<p>
+Assuming you are starting with Linksys firmware, select the "Administration"
+page.
+
+<p>
+Select "Firmware Upgrade".  Select the "Browse" button, and navigate to
+the firmware file "cloud_hub_0.1.40.bin" downloaded from this web site.
+
+<p>
+Hit the "Upgrade" button, and wait patiently.  (Not waiting long enough
+during a firmware upgrade is the usual way to ruin a router.)  When
+you get the "Upgrade is successful message, hit "Continue".
+
+<p>
+You should see the "Cloud hub initial setup" page at this point.
+
+<a name="setup">
+<h4>
+Initial setup after the firmware upgrade
+</h4>
+</a>
+
+<p>
+Reset the box to factory default settings by pressing and holding down
+the "reset" button on the back of the box, next to the fifth Cat-5
+connection.  You will probably need a pen or some other pointed object
+to get to the button, because it is recessed in a little bit.  You
+have to hold the button down for 10 or 15 seconds, until the "Power"
+light on the front of the box begins to blink rapidly.  Then, wait
+a minute or so until the box reboots.
+
+<p>
+Select "Activate cloud hub", and while the router reboots, switch
+the Cat-5 cable on the back of the router from one of the four contiguous
+connections over to the fifth separate connection.  THIS IS IMPORTANT!
+You have to do this in order to regain access to the internal web
+page in the router!
+
+<p>
+With this firmware, the fifth connection is used exclusively for accessing
+the internal configuration web page of the router, and for ssh access into
+the router.  It is not used for connections to the internet etc.
+
+<p>
+The four contiguous connections on the router are used for communication
+with other PC's, modems, the internet, etc.
+
+<p>
+If you care to, you can customize the wireless settings on your
+router from the "Cloud hub setup" page.
+
+<p>
+With multiple routers configured as above, they will find each other and
+exchange packets.  You can plug a Cat-5 connection into one of the four
+contiguous connections on the back of the router.  Or, you can configure
+a wireless card in your PC to ad-hoc mode, and with it find the SSID
+and channel of your wireless cloud.  Either way, your PC will be on the
+collision domain defined by the cloud of WRT54G routers.
+
+<a name="build">
+<h3>
+Building the firmware binary from source code
+</h3>
+</a>
+
+<p>
+The cloud hub firmware is built on top of tofu's modifications to
+HyperWRT.  HyperWRT is in turn a set of modifications to the Linksys
+WRT54G firmware.  The steps to build the firmware are to download Linksys
+firmware, apply the HyperWRT/tofu changes, and then apply the cloud hub
+firmware changes.  (The cloud hub changes are mostly to the internal web
+page and the default non-volatile ram settings.)  Then, the cloud hub
+user-land code is compiled and copied into the firmware build environment,
+and the firmware is then built.  These steps are described below, with
+chunks of Linux shell commands that can be cut and pasted.
+
+<p>
+(Cloud hub is a collection of user-land applications, and does
+not involve modifications to the Linux kernel.  As such, it would be
+possible without too much effort to port it to other Linux platforms.
+In fact, when the project was started a few years ago it was built using
+hostap, an open source wifi package for prism-based wifi cards.)
+
+<p>
+Get the Linksys firmware version WRT54GL_v4.30.1_DE.tgz.
+
+<pre>
+    mkdir ~/wrt_dir
+    cd ~/wrt_dir
+    ftp ftp.linksys.com
+    Name (ftp.linksys.com:greg): anonymous
+    Password: (your email address is conventional)
+    ftp> cd opensourcecode/wrt54gl/4.30.1-DE
+    ftp> get WRT54GL_v4.30.1_DE.tgz
+    ftp> exit
+</pre>
+
+<p>
+Unpack it:
+<pre>
+    tar xfz WRT54GL_v4.30.1_DE.tgz
+</pre>
+
+<p>
+Become super-user so that you can write the the directory /opt,
+and create a directory containing cross-compilation tools:
+
+<pre>
+    su
+    Password:
+    mv WRT54GL_4.30.1_1006_DE/tools/brcm /opt/brcm_WRT54GL_4.30.1_1006_DE
+    cd /opt
+    ln -s /opt/brcm_WRT54GL_4.30.1_1006_DE brcm
+</pre>
+
+<p>
+Modify your shell environment so that the MIPS cross-compiler is in your
+path:
+
+<pre>
+    # if you use csh or a variant, add into your ~/.cshrc file after other
+    # settings of the path variable:
+    set path = ( /opt/brcm/hndtools-mipsel-uclibc/bin $path )
+
+    # if you use bash or a variant, add into your .bashrc file after other
+    # settings of your path variable:
+    export PATH=/opt/brcm/hndtools-mipsel-uclibc/bin:$PATH
+</pre>
+
+<p>
+Download the tofu-HyperWRT modifications to the Linksys firmware:
+
+<ul>
+    <li>
+    With a browser, go to http://www.polarcloud.com/tofu
+
+    <li>
+    Download "WRT54G v1-v4, WRT54GL v1.x" source code, a file named
+    "tofu-13-c-source.tar.bz2"
+
+    <li>
+    Move tofu-13-c-source.tar.bz2 into ~/wrt_dir
+</ul>
+
+<p>
+Remove some directories from the Linksys firmware that will be replaced
+by tofu versions, and unpack the tufo/HyperWRT on top of the Linksys
+firmware:
+
+<pre>
+    cd ~/wrt_dir
+    bunzip2 tofu-13-c-source.tar.bz2
+    cd WRT54GL_4.30.1_1006_DE/release
+    rm -rf src/router/{busybox,udhcpd,dnsmasq,ntpclient,iptables}
+    tar xf ~/wrt_dir/HyperWRT_G_tofu13c.tar
+</pre>
+
+<p>
+Download and unpack the cloud hub application software and cloud hub firmware
+modifications:
+
+<ul>
+    <li>
+    Browse to http://www.sourceforge.net/projects/cloudhub
+
+    <li>
+    Hit the big green "Download Cloud Hub" button
+
+    <li>
+    Select "Release" cloud_hub_0.1.40
+
+    <li>
+    Download the following three files into a convenient directory
+    such as ~/wrt_dir:
+    <ul>
+        <li> cloud_hub_0.1.40.tgz
+
+        <li> cloud_hub_0.1.40_fw.tgz
+
+        <li> cloud_hub_0.1.40_fw.patch
+    </ul>
+</ul>
+
+<p>
+Unpack new cloud hub files into the firmware directory:
+
+<pre>
+    cd ~/wrt_dir/WRT54GL_4.30.1_1006_DE
+    tar xfz ~/wrt_dir/cloud_hub_0.1.40.fw.tgz
+</pre>
+
+<p>
+Apply cloud hub-specific patches to existing files in the firmware directory:
+
+<pre>
+    cd ~/wrt_dir/WRT54GL_4.30.1_1006_DE
+    patch -p0 < ~/wrt_dir/cloud_hub_0.1.40_fw.patch
+</pre>
+
+<p>
+Configure busybox and the linux kernel:
+
+<pre>
+    cd ~/wrt_dir/WRT54GL_4.30.1_1006_DE/release/src/router/busybox
+    make menuconfig
+    # don't change anything, hit the TAB key to select "exit", and then confirm
+
+    cd ..
+    make menuconfig
+    # don't change anything, hit the TAB key to select "exit", and then confirm
+
+    # yet another configuration window will be compiled and pop up, and do
+    # the same thing again; hit the TAB key to select "exit", and then confirm
+</pre>
+
+<p>
+Unpack and build the cloud_hub application software and copy
+it into the build tree:
+
+<pre>
+    cd ~/wrt_dir
+    tar xfz cloud_hub_0.1.40.tgz
+    cd cloud_hub_0.1.40
+
+    # verify that the cross compiler is in your path:
+    which mipsel-uclibc-gcc
+        /opt/brcm/hndtools-mipsel-uclibc/bin/mipsel-uclibc-gcc
+    # if you don't find mipsel-uclibc-gcc, debug your shell path until you do
+
+    make
+    copy_um ~/wrt_dir/WRT54GL_4.30.1_1006_DE
+</pre>
+
+Do the firmware build:
+
+<pre>
+    cd ~/wrt_dir/WRT54GL_4.30.1_1006_DE/release/src
+    make
+</pre>
+
+Assuming all goes well, the installable firmware binary will be in
+<pre>
+    ~/wrt_dir/WRT54GL_4.30.1_1006_DE/release/image/code.bin
+</pre>
+after the make completes.
+
+<a name="acknowledgments">
+<h3>
+Acknowledgments
+</h3>
+</a>
+
+<p>
+Greg Johnson had the original idea for the cloud hub project, and
+wrote the software.
+
+<p>
+Steve Corda deserves many thanks for his contributions to this project.
+He wrote the original web site for the project.  He tirelessly tested
+the boxes when development was intense and things did not work very
+well.  He contributed many suggestions and ideas for improvement.
+These included ideas for improvements to the internal configuration
+web site, improvements to the implementation, and improvements to the
+testing and development process.
+
+</body>

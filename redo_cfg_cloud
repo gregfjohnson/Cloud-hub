@@ -1,0 +1,351 @@
+#!/bin/sh
+# Copyright (C) 2012, Greg Johnson
+# $Id: redo_cfg_cloud,v 1.4 2012-02-22 18:55:25 greg Exp $
+#
+# debugging harness that can be used to start the cloud software with
+# faked pre-specified signal strengths, to provide repeatability.
+#
+
+# (ad-hoc, have cloud look at beacons for sig_strength)
+# v1: /tmp/redo_cfg_cloud eth0  eth2 eth1   prism0 1 -y -A -P []
+# v2: /tmp/redo_cfg_cloud vlan0 eth1 vlan1  prism0 2 -y -A -P []
+
+# (ad-hoc, fake sig_strengths among boxes for testing)
+# v1: /tmp/redo_cfg_cloud eth0  eth2 eth1   prism0 1 -noy -A -P []
+# v2: /tmp/redo_cfg_cloud vlan0 eth1 vlan1  prism0 2 -noy -A -P []
+
+# (wds mode, have cloud look at beacons for sig_strength)
+# v1: /tmp/redo_cfg_cloud eth0  eth2 eth1   prism0 1 -y -noa -P []
+# v2: /tmp/redo_cfg_cloud vlan0 eth1 vlan1  prism0 2 -y -noa -P []
+
+# (wds mode, fake sig_strengths among boxes for testing)
+# v1: /tmp/redo_cfg_cloud eth0  eth2 eth1   prism0 1 -noy -noa -P []
+# v2: /tmp/redo_cfg_cloud vlan0 eth1 vlan1  prism0 2 -noy -noa -P []
+
+lan=$1
+wireless=$2
+wlan=$3
+wirelessmon=$4
+version=$5
+simsigstrength="$6"
+adhoc=$7
+cloudif=$8
+
+echo start > /tmp/r.log
+if [ "$adhoc" = "-A" ]; then
+    echo xxx >> /tmp/r.log
+else
+    echo yyy >> /tmp/r.log
+fi
+
+/sbin/ifconfig br0 down
+/usr/sbin/brctl delbr br0
+
+/sbin/ifconfig vlan0 up
+/sbin/ifconfig vlan0 192.168.1.35
+
+/sbin/ifconfig prism0 up
+
+sigstrength="-y"
+killall merge_cloud
+# killall ll_shell_ftp
+killall update_wrt_wds
+killall status_lights
+killall tail
+wl wds none
+rm -f /tmp/wds /tmp/wds_hist
+
+echo step 2 >> /tmp/r.log
+
+/usr/sbin/wl monitor 1
+/usr/sbin/wl mrate 11
+/usr/sbin/wl rate 11
+
+echo foo 3 >> /tmp/r.log
+
+echo adhoc $adhoc >> /tmp/r.log
+
+if [ "$adhoc" = "-A" ]; then
+
+    echo xxx >> /tmp/r.log
+
+    # set ap mode off, and make sure it's off
+    ok=false
+    while [ "$ok" = "false" ]; do
+        echo foo 1 >> /tmp/r.log
+        /usr/sbin/wl ap 0
+        sleep 1
+        wl ap > /tmp/xxx.$$
+        if grep 'off' /tmp/xxx.$$ > /dev/null; then
+            ok=true
+        fi
+    done
+
+    echo zzz foo 1 >> /tmp/r.log
+
+    # set wep off, and make sure it's off
+    ok=false
+    while [ "$ok" = "false" ]; do
+        echo foo 2 >> /tmp/r.log
+        /usr/sbin/wl wep 0
+        sleep 1
+        wl wep > /tmp/xxx.$$
+        if grep 'WEP disabled' /tmp/xxx.$$ > /dev/null; then
+            ok=true
+        fi
+    done
+
+    echo zzz foo 2 >> /tmp/r.log
+
+    # go into ad-hoc mode, and make sure we got into ad-hoc mode
+    ok=false
+    while [ "$ok" = "false" ]; do
+        # wl join mesa_xxx key 11223344556677889900aabbcc imode ibss amode open
+        wl join mesa_xxx imode ibss amode open
+        sleep 1
+        wl status > /tmp/xxx.$$
+        if grep 'Mode: Ad Hoc' /tmp/xxx.$$ > /dev/null; then
+            ok=true
+        fi
+    done
+
+else
+    echo yyy >> /tmp/r.log
+
+    adhoc=""
+
+    # try this for now.
+    # set wep off, and make sure it's off
+    ok=false
+    while [ "$ok" = "false" ]; do
+        /usr/sbin/wl wep 0
+        sleep 1
+        wl wep > /tmp/xxx.$$
+        if grep 'WEP disabled' /tmp/xxx.$$ > /dev/null; then
+            ok=true
+        fi
+    done
+
+    /usr/sbin/wl ap 1
+fi
+
+echo step 5 >> /tmp/r.log
+
+# wl channel 10
+# wl join home_wireless_22
+
+sleep 1
+
+llshellftp=/usr/sbin/ll_shell_ftp
+if ls /tmp/ll_shell_ftp > /dev/null 2>&1 ; then
+    llshellftp=/tmp/ll_shell_ftp
+fi
+
+# rm /tmp/ll_shell_ftp.log
+
+label=/usr/sbin/label
+if ls /tmp/label > /dev/null 2>&1 ; then
+    label=/tmp/label
+fi
+
+rm -f /tmp/sig_strength
+
+if [ "$simsigstrength" = "-noy" ]; then
+
+    sigstrength=""
+
+    # wireless mac addrs for w22 .. w28
+    wlan22=00:0C:41:76:6C:2A
+    wlan23=00:0C:41:AB:EB:C8
+    wlan24=00:0C:41:AB:EB:DD
+    wlan25=00:0C:41:AB:EB:B0
+    wlan26=00:0C:41:AB:EB:B3
+    wlan27=00:0C:41:6E:55:A1
+    wlan28=00:0F:66:B1:40:ED
+    wlan29=00:12:17:28:7B:E5
+    wlan30=00:13:10:87:6C:B0
+    wlan31=00:13:10:87:6C:9B
+    wlan32=00:13:10:9e:8c:f4
+    wlan33=00:14:bf:12:5f:6d
+    wlan34=00:14:bf:ba:48:b9
+    wlan35=00:14:bf:ba:7c:dc
+
+    client=00:06:25:1b:8f:37
+    tomsmachine=00:05:5d:ed:e5:1e
+    aragorn=00:05:5d:ee:5b:37
+    roadie=00:04:e2:1a:e7:e0
+
+    ifconfig $wireless | grep HWaddr > /tmp/xxx.$$
+
+    if grep $wlan30 /tmp/xxx.$$ > /dev/null; then
+        touch /tmp/did_30
+        rm -f /tmp/sig_strength
+        # echo "$roadie 254" >> /tmp/sig_strength
+          echo "$wlan32 254" >>/tmp/sig_strength
+          echo "$wlan34 190" >>/tmp/sig_strength
+        # echo "$wlan28 186" >> /tmp/sig_strength
+        # echo "$wlan29 186" >> /tmp/sig_strength
+        # echo "$roadie 254" >>/tmp/sig_strength
+        # echo "$aragorn 186" >>/tmp/sig_strength
+    fi
+
+    if grep $wlan32 /tmp/xxx.$$ > /dev/null; then
+        touch /tmp/did_32
+        rm -f /tmp/sig_strength
+          echo "$wlan30      254" >> /tmp/sig_strength
+          echo "$wlan34      254" >> /tmp/sig_strength
+        # echo "$tomsmachine 186" >> /tmp/sig_strength
+        # echo "$roadie      186" >> /tmp/sig_strength
+        # echo "$wlan29      186" >> /tmp/sig_strength
+        # echo "$aragorn     254" >> /tmp/sig_strength
+        # echo "$wlan24      254" >> /tmp/sig_strength
+
+        # echo "$client      200" >> /tmp/sig_strength
+    fi
+
+    if grep $wlan34 /tmp/xxx.$$ > /dev/null; then
+        touch /tmp/did_34
+        rm -f /tmp/sig_strength
+        echo "$wlan30 190" >> /tmp/sig_strength
+        echo "$wlan34 254" >> /tmp/sig_strength
+    fi
+
+    if grep $wlan27 /tmp/xxx.$$ > /dev/null; then
+        touch /tmp/did_27
+        rm -f /tmp/sig_strength
+          echo "$wlan23      254" >> /tmp/sig_strength
+        # echo "$wlan28      254" >> /tmp/sig_strength
+        # echo "$wlan29      186" >> /tmp/sig_strength
+        # echo "$tomsmachine 186" >> /tmp/sig_strength
+          echo "$roadie      186" >> /tmp/sig_strength
+          echo "$aragorn     254" >> /tmp/sig_strength
+
+        # echo "$client      200" >> /tmp/sig_strength
+    fi
+
+    if grep $wlan28 /tmp/xxx.$$ > /dev/null; then
+        touch /tmp/did_28
+        rm -f /tmp/sig_strength
+          echo "$wlan23 186" >> /tmp/sig_strength
+          echo "$wlan27 254" >> /tmp/sig_strength
+          echo "$wlan29 254" >> /tmp/sig_strength
+    fi
+
+    if grep $wlan29 /tmp/xxx.$$ > /dev/null; then
+        touch /tmp/did_29
+        rm -f /tmp/sig_strength
+          echo "$wlan23      186" >> /tmp/sig_strength
+          echo "$wlan27      186" >> /tmp/sig_strength
+          echo "$wlan28      254" >> /tmp/sig_strength
+        # echo "$tomsmachine 186" >> /tmp/sig_strength
+        # echo "$roadie      186" >> /tmp/sig_strength
+        # echo "$wlan29      254" >> /tmp/sig_strength
+        # echo "$aragorn     254" >> /tmp/sig_strength
+        # echo "$wlan24      186" >> /tmp/sig_strength
+
+        # echo "$client      200" >> /tmp/sig_strength
+    fi
+
+    rm /tmp/xxx.$$
+fi
+
+touch /tmp/sig_strength
+touch /tmp/beacons
+touch /tmp/wds
+
+devs="eth0 eth1 eth2 prism0 vlan0 vlan1"
+# devs="eth1 eth2 prism0 vlan1"
+
+for dev in $devs; do
+    ok=false
+    while [ "$ok" = false ]; do
+        ifconfig $dev 0.0.0.0
+        ifconfig $dev up
+        ifconfig $dev > /tmp/xxx.$$
+        if grep 'inet addr' /tmp/xxx.$$ > /dev/null; then
+            echo foo > /dev/null
+        else
+            ok=true
+        fi
+        sleep 1
+    done
+done
+
+# ifconfig eth0 192.168.1.1
+
+# ifconfig vlan0 0.0.0.0
+# ifconfig vlan1 0.0.0.0
+
+#if grep $wlan24 /tmp/xxx.$$ > /dev/null; then
+#    ifconfig eth0 192.168.1.24
+#    ifconfig eth0 up
+#fi
+#
+#if grep $wlan27 /tmp/xxx.$$ > /dev/null; then
+#    ifconfig eth0 192.168.1.27
+#    ifconfig eth0 up
+#fi
+#
+#if grep $wlan29 /tmp/xxx.$$ > /dev/null; then
+#    ifconfig vlan0 192.168.1.29
+#    ifconfig vlan0 up
+#fi
+
+ifconfig vlan0 up
+ifconfig vlan1 up
+
+# ifconfig $lan 0.0.0.0
+# ifconfig $wireless 0.0.0.0
+# ifconfig $wlan 0.0.0.0
+
+ifconfig $lan up
+ifconfig $wireless up
+ifconfig $wlan up
+
+label=/usr/sbin/label
+if ls /tmp/label > /dev/null 2>&1 ; then
+    label=/tmp/label
+fi
+
+mergecloud=/usr/sbin/merge_cloud
+if ls /tmp/merge_cloud > /dev/null 2>&1 ; then
+    mergecloud=/tmp/merge_cloud
+fi
+
+updatewrtwds=/usr/sbin/update_wrt_wds
+if ls /tmp/update_wrt_wds > /dev/null 2>&1 ; then
+    updatewrtwds=/tmp/update_wrt_wds
+fi
+
+statuslights=/usr/sbin/status_lights
+if ls /tmp/status_lights > /dev/null 2>&1 ; then
+    statuslights=/tmp/status_lights
+fi
+
+if [ "$adhoc" = "-A" ]; then
+    wdsfile=/tmp/sig_strength
+else
+    $updatewrtwds 2>&1 | $label -t /tmp/update_wrt_wds.log &
+    wdsfile=/tmp/wds
+fi
+
+$statuslights -v $version 2>&1 \
+    | $label -t /tmp/status_lights.log &
+
+echo $mergecloud -n -e $lan -w $wireless -m $wirelessmon -a /tmp/sig_strength -b /tmp/eth_beacons -d /tmp/beacons -f $cloudif $sigstrength $adhoc -p $wdsfile
+
+$mergecloud -n -e $lan -w $wireless -m $wirelessmon -a /tmp/sig_strength \
+    -b /tmp/eth_beacons \
+    -d /tmp/beacons \
+    -l -f $cloudif $sigstrength $adhoc \
+    -p $wdsfile \
+    > /tmp/cloud.log 2>&1 &
+
+tail -f /tmp/cloud.log &
+
+#    2>&1 | $label -t /tmp/cloud.log &
+
+#$llshellftp -e $wlan -s \
+#    2>&1 | $label -t /tmp/ll_shell_ftp.log &
+
+#    > /tmp/ll_shell_ftp.log 2>&1 &

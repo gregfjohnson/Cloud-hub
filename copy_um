@@ -1,0 +1,30 @@
+#!/bin/sh
+# copy_um - copy application-level code into firmware build environment
+#
+# Copyright (C) 2012, Greg Johnson
+# Released under the terms of the GNU GPL v2.0.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# $Id: copy_um,v 1.6 2012-02-22 18:55:24 greg Exp $
+
+# keep track of the files that have to be copied into firmware source tree,
+# do the copy.
+#
+# usage:  copy_um [router_firmware_directory]
+#
+# default router_firmware_directory:  ~/wrt54g.d/WRT54G_3_03_9
+
+if [ -n "$1" ]; then
+    basedir=$1
+else
+    basedir=~/wrt54g.d/WRT54G_3_03_9
+fi
+
+cp cfg_cloud firmware_version label ll_shell_ftp merge_cloud \
+    status_lights uncfg_cloud update_wrt_wds set_merge_cloud_db \
+    ll_dump do_cfg_cloud redo_cfg_cloud do_scan scan change_wifi_parms \
+    $basedir/release/src/router/mipsel-uclibc/install/utils/usr/sbin
